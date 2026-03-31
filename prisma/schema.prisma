@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum PunishmentStatus {
+  PENDING
+  COMPLETED
+}
+
+enum QuestPassEventType {
+  EARNED
+  USED
+  RESTORED
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum GuildRole {
+  OWNER
+  MEMBER
+}
+
+enum NotificationType {
+  FRIEND_REQUEST_RECEIVED
+  FRIEND_REQUEST_ACCEPTED
+  GUILD_MEMBER_JOINED
+  GUILD_MEMBER_LEFT
+  GUILD_REMOVED
+  GUILD_MESSAGE
+}
+
+model User {
+  id                   String                 @id @default(cuid())
+  username             String                 @unique
+  passwordHash         String
+  onboardingComplete   Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  stats                UserStats?
+  tasks                Task[]
+  punishments          Punishment[]
+  dailyLogs            DailyLog[]
+  journalEntries       JournalEntry[]
+  exercisePlans        ExercisePlanItem[]
+  missedDayPunishments MissedDayPunishment[]
+  questPassEvents      QuestPassEvent[]
+  friendshipsSent      Friendship[]           @relation("FriendshipRequester")
+  friendshipsReceived  Friendship[]           @relation("FriendshipAddressee")
+  guildMembership      GuildMembership?
+  notifications        Notification[]
+  guildMessages        GuildMessage[]
+}
+
+model UserStats {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  currentLevel   Int      @default(1)
+  totalExp       Int      @default(0)
+  currentTitle   String   @default("Apprentice")
+  currentStreak  Int      @default(0)
+  questPassCount Int      @default(0)
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id                String                @id @default(cuid())
+  userId            String
+  name              String
+  anchorDescription String
+  fullDescription   String
+  anchorQp          Float                 @default(1)
+  fullQp            Float                 @default(1)
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyCompletions  DailyTaskCompletion[]
+}
+
+model Punishment {
+  id                  String                 @id @default(cuid())
+  userId              String
+  name                String
+  description         String?
+  isActive            Boolean                @default(true)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  user                User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missedDayPunishment MissedDayPunishment[]
+}
+
+model DailyLog {
+  id                   String                @id @default(cuid())
+  userId               String
+  logDate              DateTime
+  anchorCount          Float                 @default(0)
+  fullCount            Float                 @default(0)
+  baseQp               Float                 @default(0)
+  bonusQp              Float                 @default(0)
+  totalQp              Float                 @default(0)
+  expGained            Int                   @default(0)
+  streakValueForDay    Int                   @default(0)
+  questPassUsed        Boolean               @default(false)
+  allAnchorsCompleted  Boolean               @default(false)
+  threeFullBonusEarned Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskCompletions      DailyTaskCompletion[]
+
+  @@unique([userId, logDate])
+}
+
+model DailyTaskCompletion {
+  id              String   @id @default(cuid())
+  dailyLogId      String
+  taskId          String
+  anchorCompleted Boolean  @default(false)
+  fullCompleted   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  dailyLog        DailyLog @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([dailyLogId, taskId])
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  entryDate DateTime
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entryDate])
+}
+
+model ExercisePlanItem {
+  id           String   @id @default(cuid())
+  userId       String
+  dayOfWeek    Weekday
+  title        String
+  notes        String?
+  durationText String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dayOfWeek, sortOrder])
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
+}
+
+model Guild {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  inviteCode  String            @unique
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  members     GuildMembership[]
+  messages    GuildMessage[]
+}
+
+model GuildMembership {
+  id              String    @id @default(cuid())
+  guildId         String
+  userId          String    @unique
+  role            GuildRole @default(MEMBER)
+  lastBoardSeenAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  guild           Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([guildId, role])
+}
+
+model GuildMessage {
+  id        String   @id @default(cuid())
+  guildId    String
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  guild      Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model MissedDayPunishment {
+  id            String           @id @default(cuid())
+  userId        String
+  missedLogDate DateTime
+  punishmentId  String
+  isChecked     Boolean          @default(false)
+  status        PunishmentStatus @default(PENDING)
+  completedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  punishment    Punishment       @relation(fields: [punishmentId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, missedLogDate, punishmentId])
+}
+
+model QuestPassEvent {
+  id          String             @id @default(cuid())
+  userId      String
+  eventType   QuestPassEventType
+  relatedDate DateTime?
+  amount      Int                @default(1)
+  reason      String
+  createdAt   DateTime           @default(now())
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  href      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
