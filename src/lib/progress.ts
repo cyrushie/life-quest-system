@@ -38,7 +38,7 @@ export async function ensureUserStats(userId: string) {
   return await db.userStats.upsert({
     where: { userId },
     update: {},
-    create: { userId },
+    create: { userId, currentTitle: getTitleFromLevel(1) },
   });
 }
 

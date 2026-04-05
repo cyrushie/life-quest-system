@@ -1,3 +1,14 @@
+import { TITLE_LADDER } from "@/lib/game/logic";
+
+const titleItems = TITLE_LADDER.map((entry, index) => {
+  const nextEntry = TITLE_LADDER[index - 1];
+  const maxLevel = nextEntry ? nextEntry.min - 1 : null;
+
+  return maxLevel
+    ? `Lv ${entry.min}-${maxLevel}: ${entry.title}`
+    : `Lv ${entry.min}+: ${entry.title}`;
+}).reverse();
+
 const sections = [
   {
     title: "Core progression",
@@ -5,8 +16,12 @@ const sections = [
       "1 QP always equals 2,000 EXP.",
       "EXP needed for the next level is current level x 1,000.",
       "Extra EXP carries over after leveling up.",
-      "Titles change by level range: Apprentice, Student, Adept, Craftsman, Master, Architect.",
+      "Titles now change across a long ladder, from Wanderer at the start up to Legend at the very top.",
     ],
+  },
+  {
+    title: "Title ladder",
+    items: titleItems,
   },
   {
     title: "Tasks",

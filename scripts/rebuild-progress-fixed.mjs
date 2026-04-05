@@ -4,6 +4,31 @@ const { PrismaClient } = await import("@prisma/client");
 
 const prisma = new PrismaClient();
 
+const TITLE_LADDER = [
+  { min: 360, title: "Legend" },
+  { min: 340, title: "Architect" },
+  { min: 320, title: "Mythic" },
+  { min: 300, title: "Exalted" },
+  { min: 280, title: "Ascendant" },
+  { min: 260, title: "Paragon" },
+  { min: 240, title: "Grandmaster" },
+  { min: 220, title: "Master" },
+  { min: 200, title: "Sage" },
+  { min: 180, title: "Commander" },
+  { min: 160, title: "Champion" },
+  { min: 140, title: "Knight" },
+  { min: 120, title: "Tactician" },
+  { min: 105, title: "Warden" },
+  { min: 90, title: "Vanguard" },
+  { min: 75, title: "Pathfinder" },
+  { min: 60, title: "Adept" },
+  { min: 45, title: "Aspirant" },
+  { min: 30, title: "Seeker" },
+  { min: 20, title: "Disciple" },
+  { min: 10, title: "Initiate" },
+  { min: 1, title: "Wanderer" },
+];
+
 function getDateKey(date) {
   return new Date(date).toISOString().slice(0, 10);
 }
@@ -19,18 +44,7 @@ function getLevelState(totalExp) {
 
   return {
     level,
-    title:
-      level >= 50
-        ? "Architect"
-        : level >= 40
-          ? "Master"
-          : level >= 30
-            ? "Craftsman"
-            : level >= 20
-              ? "Adept"
-              : level >= 10
-                ? "Student"
-                : "Apprentice",
+    title: TITLE_LADDER.find((entry) => level >= entry.min)?.title ?? "Wanderer",
     questPassesEarned: Math.floor(level / 10),
   };
 }

@@ -75,7 +75,7 @@ model UserStats {
   userId         String   @unique
   currentLevel   Int      @default(1)
   totalExp       Int      @default(0)
-  currentTitle   String   @default("Apprentice")
+  currentTitle   String   @default("Wanderer")
   currentStreak  Int      @default(0)
   questPassCount Int      @default(0)
   updatedAt      DateTime @updatedAt

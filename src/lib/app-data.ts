@@ -369,7 +369,7 @@ function mapSocialUser(
     id: user.id,
     username: user.username,
     level: user.stats?.currentLevel ?? 1,
-    title: user.stats?.currentTitle ?? "Apprentice",
+    title: user.stats?.currentTitle ?? "Wanderer",
     streak: user.stats?.currentStreak ?? 0,
     guildName: user.guildMembership?.guild.name ?? null,
     activity: buildActivitySnippet(user.stats, latestLogByUserId.get(user.id)),
@@ -431,7 +431,7 @@ export async function getDashboardData(userId: string) {
 
   const safeStats = stats ?? {
     currentLevel: 1,
-    currentTitle: "Apprentice",
+    currentTitle: "Wanderer",
     totalExp: 0,
     currentStreak: 0,
     questPassCount: 0,
@@ -983,7 +983,7 @@ export async function getProfileData(viewerUserId: string, username: string) {
 
   const safeStats = profileUser.stats ?? {
     currentLevel: 1,
-    currentTitle: "Apprentice",
+    currentTitle: "Wanderer",
     totalExp: 0,
     currentStreak: 0,
     questPassCount: 0,

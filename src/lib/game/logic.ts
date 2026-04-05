@@ -25,6 +25,31 @@ export type DailyCalculationResult = {
 
 export const EXP_PER_QP = 2000;
 
+export const TITLE_LADDER = [
+  { min: 360, title: "Legend" },
+  { min: 340, title: "Architect" },
+  { min: 320, title: "Mythic" },
+  { min: 300, title: "Exalted" },
+  { min: 280, title: "Ascendant" },
+  { min: 260, title: "Paragon" },
+  { min: 240, title: "Grandmaster" },
+  { min: 220, title: "Master" },
+  { min: 200, title: "Sage" },
+  { min: 180, title: "Commander" },
+  { min: 160, title: "Champion" },
+  { min: 140, title: "Knight" },
+  { min: 120, title: "Tactician" },
+  { min: 105, title: "Warden" },
+  { min: 90, title: "Vanguard" },
+  { min: 75, title: "Pathfinder" },
+  { min: 60, title: "Adept" },
+  { min: 45, title: "Aspirant" },
+  { min: 30, title: "Seeker" },
+  { min: 20, title: "Disciple" },
+  { min: 10, title: "Initiate" },
+  { min: 1, title: "Wanderer" },
+] as const;
+
 export function calculateDailyProgress(
   input: DailyCalculationInput,
 ): DailyCalculationResult {
@@ -100,12 +125,7 @@ export function calculateQuestPassProgress(
 }
 
 export function getTitleFromLevel(level: number) {
-  if (level >= 50) return "Architect";
-  if (level >= 40) return "Master";
-  if (level >= 30) return "Craftsman";
-  if (level >= 20) return "Adept";
-  if (level >= 10) return "Student";
-  return "Apprentice";
+  return TITLE_LADDER.find((entry) => level >= entry.min)?.title ?? "Wanderer";
 }
 
 export function calculateExpNeededForNextLevel(level: number) {
