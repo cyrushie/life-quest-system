@@ -65,6 +65,30 @@ function formatQp(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function getRecoveryStateLabel(state: "pending" | "completed" | "mixed") {
+  if (state === "completed") {
+    return "Completed";
+  }
+
+  if (state === "mixed") {
+    return "In progress";
+  }
+
+  return "Pending";
+}
+
+function getRecoveryStateClasses(state: "pending" | "completed" | "mixed") {
+  if (state === "completed") {
+    return "status-pill-live";
+  }
+
+  if (state === "mixed") {
+    return "border-amber-300/18 bg-amber-400/[0.06] text-amber-100";
+  }
+
+  return "";
+}
+
 function buildMonthOptions(logs: HistoryEntry[], todayDateKey: string) {
   const currentMonthKey = getMonthKey(todayDateKey);
   const allMonthKeys = new Set([currentMonthKey, ...logs.map((entry) => getMonthKey(entry.dateKey))]);
@@ -235,15 +259,21 @@ export function HistoryClient({ refreshKey }: { refreshKey: string }) {
             <span className="status-pill">Journal</span>
             <span className="status-pill">Quest pass</span>
           </div>
+          <p className="text-xs text-stone-500">
+            Mobile markers: <span className="text-stone-300">R</span> = Recovery,{" "}
+            <span className="text-stone-300">J</span> = Journal,{" "}
+            <span className="text-stone-300">P</span> = Quest Pass.
+          </p>
 
-          <div className="overflow-hidden rounded-[1.1rem] border border-white/6 bg-white/[0.025] p-3">
-            <div className="grid grid-cols-7 gap-2">
+          <div className="overflow-hidden rounded-[1.1rem] border border-white/6 bg-white/[0.025] p-2 md:p-3">
+            <div className="grid grid-cols-7 gap-1.5 md:gap-2">
               {WEEKDAY_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="px-2 py-2 text-center text-[0.68rem] uppercase tracking-[0.16em] text-stone-500"
+                  className="px-1 py-1.5 text-center text-[0.58rem] uppercase tracking-[0.12em] text-stone-500 md:px-2 md:py-2 md:text-[0.68rem] md:tracking-[0.16em]"
                 >
-                  {label}
+                  <span className="md:hidden">{label.slice(0, 1)}</span>
+                  <span className="hidden md:inline">{label}</span>
                 </div>
               ))}
 
@@ -253,7 +283,7 @@ export function HistoryClient({ refreshKey }: { refreshKey: string }) {
                 const hasJournal = Boolean(cell.entry?.journalWritten);
                 const hasQuestPass = Boolean(cell.entry?.questPassUsed);
                 const cellClasses = [
-                  "min-h-[7rem] rounded-[1rem] border px-3 py-3 transition-colors",
+                  "min-h-[5rem] rounded-[0.9rem] border px-2 py-2 transition-colors md:min-h-[7rem] md:rounded-[1rem] md:px-3 md:py-3",
                   cell.inCurrentMonth
                     ? "border-white/6 bg-white/[0.025]"
                     : "border-white/4 bg-white/[0.012] opacity-45",
@@ -268,29 +298,46 @@ export function HistoryClient({ refreshKey }: { refreshKey: string }) {
                 const content = (
                   <>
                     <div className="flex items-start justify-between gap-2">
-                      <span className="font-serif text-lg text-stone-50">{cell.dayNumber}</span>
+                      <span className="font-serif text-sm text-stone-50 md:text-lg">
+                        {cell.dayNumber}
+                      </span>
                       {cell.entry?.canEdit ? (
-                        <span className="text-[0.62rem] uppercase tracking-[0.14em] text-stone-500">
+                        <span className="hidden text-[0.62rem] uppercase tracking-[0.14em] text-stone-500 md:inline">
                           Edit
                         </span>
                       ) : null}
                     </div>
 
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-2 space-y-1.5 md:mt-3 md:space-y-2">
                       {cell.entry ? (
                         <>
-                          <p className="text-sm font-medium text-stone-200">
-                            {cell.entry.totalQp > 0 ? `QP ${formatQp(cell.entry.totalQp)}` : "No QP"}
+                          <p className="text-[0.72rem] font-medium text-stone-200 md:text-sm">
+                            {cell.entry.totalQp > 0 ? `${formatQp(cell.entry.totalQp)} QP` : "No QP"}
                           </p>
-                          <div className="flex flex-wrap gap-2 text-[0.64rem] uppercase tracking-[0.12em] text-stone-400">
-                            {hasRecovery ? <span>Recovery</span> : null}
-                            {hasJournal ? <span>Journal</span> : null}
-                            {hasQuestPass ? <span>Pass</span> : null}
+                          <div className="flex flex-wrap gap-1 text-[0.58rem] uppercase tracking-[0.08em] text-stone-400 md:gap-2 md:text-[0.64rem] md:tracking-[0.12em]">
+                            {hasRecovery ? (
+                              <span>
+                                <span className="md:hidden">R</span>
+                                <span className="hidden md:inline">Recovery</span>
+                              </span>
+                            ) : null}
+                            {hasJournal ? (
+                              <span>
+                                <span className="md:hidden">J</span>
+                                <span className="hidden md:inline">Journal</span>
+                              </span>
+                            ) : null}
+                            {hasQuestPass ? (
+                              <span>
+                                <span className="md:hidden">P</span>
+                                <span className="hidden md:inline">Pass</span>
+                              </span>
+                            ) : null}
                           </div>
                         </>
                       ) : (
-                        <p className="text-sm text-stone-500">
-                          {cell.isFuture ? "Upcoming" : "No log"}
+                        <p className="text-[0.72rem] text-stone-500 md:text-sm">
+                          {cell.isFuture ? "Soon" : "No log"}
                         </p>
                       )}
                     </div>
@@ -311,54 +358,46 @@ export function HistoryClient({ refreshKey }: { refreshKey: string }) {
           </div>
         </div>
       ) : (
-        <div className="mt-5 overflow-hidden rounded-[1.1rem] border border-white/6 bg-white/[0.025]">
-          <table className="w-full border-collapse text-left">
-            <thead className="bg-white/[0.03] text-[0.68rem] uppercase tracking-[0.16em] text-stone-400">
+        <div className="mt-5 overflow-x-auto rounded-[1.1rem] border border-white/6 bg-white/[0.025]">
+          <table className="min-w-[48rem] w-full border-collapse text-left">
+            <thead className="bg-white/[0.03] text-[0.58rem] uppercase tracking-[0.12em] text-stone-400 md:text-[0.68rem] md:tracking-[0.16em]">
               <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">A</th>
-                <th className="px-4 py-3">F</th>
-                <th className="px-4 py-3">QP</th>
-                <th className="px-4 py-3">EXP</th>
-                <th className="px-4 py-3">Journal</th>
-                <th className="px-4 py-3">Pass</th>
-                <th className="px-4 py-3">Recovery</th>
-                <th className="px-4 py-3">Edit</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">Date</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">A</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">F</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">QP</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">EXP</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">Journal</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">Pass</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">Recovery</th>
+                <th className="px-2 py-2.5 md:px-4 md:py-3">Edit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/6 text-sm text-stone-300">
+            <tbody className="divide-y divide-white/6 text-[0.72rem] text-stone-300 md:text-sm">
               {data.logs.length ? (
                 data.logs.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="px-4 py-3 font-serif text-stone-50">{entry.dateLabel}</td>
-                    <td className="px-4 py-3">{entry.anchorCount}</td>
-                    <td className="px-4 py-3">{entry.fullCount}</td>
-                    <td className="px-4 py-3">{formatQp(entry.totalQp)}</td>
-                    <td className="px-4 py-3">+{entry.expGained.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-stone-400">
+                    <td className="px-2 py-2.5 font-serif text-stone-50 md:px-4 md:py-3">
+                      {entry.dateLabel}
+                    </td>
+                    <td className="px-2 py-2.5 md:px-4 md:py-3">{entry.anchorCount}</td>
+                    <td className="px-2 py-2.5 md:px-4 md:py-3">{entry.fullCount}</td>
+                    <td className="px-2 py-2.5 md:px-4 md:py-3">{formatQp(entry.totalQp)}</td>
+                    <td className="px-2 py-2.5 md:px-4 md:py-3">
+                      +{entry.expGained.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2.5 text-stone-400 md:px-4 md:py-3">
                       {entry.journalWritten ? "Yes" : "-"}
                     </td>
-                    <td className="px-4 py-3 text-stone-400">
+                    <td className="px-2 py-2.5 text-stone-400 md:px-4 md:py-3">
                       {entry.questPassUsed ? "Used" : "-"}
                     </td>
-                    <td className="px-4 py-3 align-top text-stone-400">
+                    <td className="px-2 py-2.5 align-top text-stone-400 md:px-4 md:py-3">
                       {entry.recovery ? (
-                        <div className="min-w-[15rem] space-y-2">
+                        <div className="min-w-[12rem] space-y-2 md:min-w-[15rem]">
                           <div className="flex flex-wrap gap-2">
-                            <span
-                              className={`status-pill ${
-                                entry.recovery.state === "completed"
-                                  ? "status-pill-live"
-                                  : entry.recovery.state === "mixed"
-                                    ? "border-amber-300/18 bg-amber-400/[0.06] text-amber-100"
-                                    : ""
-                              }`}
-                            >
-                              {entry.recovery.state === "completed"
-                                ? "Completed"
-                                : entry.recovery.state === "mixed"
-                                  ? "In progress"
-                                  : "Pending"}
+                            <span className={`status-pill ${getRecoveryStateClasses(entry.recovery.state)}`}>
+                              {getRecoveryStateLabel(entry.recovery.state)}
                             </span>
                             <span className="status-pill">
                               {entry.recovery.completedCount}/{entry.recovery.totalCount} done
@@ -402,28 +441,14 @@ export function HistoryClient({ refreshKey }: { refreshKey: string }) {
                         <span className="text-stone-500">None</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      {entry.canEdit ? (
-                        <Link
-                          className="quest-button quest-button-secondary"
-                          href={`/today?date=${entry.dateKey}`}
-                        >
-                          Edit
-                        </Link>
-                      ) : (
-                        <Link
-                          className="text-xs uppercase tracking-[0.16em] text-stone-500 hover:text-stone-300"
-                          href={`/today?date=${entry.dateKey}`}
-                        >
-                          View
-                        </Link>
-                      )}
+                    <td className="px-2 py-2.5 md:px-4 md:py-3">
+                      <HistoryActionLink dateKey={entry.dateKey} canEdit={entry.canEdit} />
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-5 text-stone-400" colSpan={9}>
+                  <td className="px-3 py-5 text-stone-400 md:px-4" colSpan={9}>
                     No history yet.
                   </td>
                 </tr>
@@ -433,5 +458,26 @@ export function HistoryClient({ refreshKey }: { refreshKey: string }) {
         </div>
       )}
     </section>
+  );
+}
+
+function HistoryActionLink({
+  dateKey,
+  canEdit,
+}: {
+  dateKey: string;
+  canEdit: boolean;
+}) {
+  return canEdit ? (
+    <Link className="quest-button quest-button-secondary" href={`/today?date=${dateKey}`}>
+      Edit
+    </Link>
+  ) : (
+    <Link
+      className="text-xs uppercase tracking-[0.16em] text-stone-500 hover:text-stone-300"
+      href={`/today?date=${dateKey}`}
+    >
+      View
+    </Link>
   );
 }
