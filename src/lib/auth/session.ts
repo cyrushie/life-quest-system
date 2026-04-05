@@ -1,9 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
-
-const secret = process.env.AUTH_SECRET ?? "development-secret-change-me";
+import { getAuthSecret } from "@/lib/env";
 
 function getSecretKey() {
-  return new TextEncoder().encode(secret);
+  return new TextEncoder().encode(getAuthSecret());
 }
 
 export type SessionPayload = {

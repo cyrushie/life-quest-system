@@ -1,6 +1,10 @@
 import { cookies } from "next/headers";
 
-export const SESSION_COOKIE_NAME = "life-quest-session";
+const isProduction = process.env.NODE_ENV === "production";
+
+export const SESSION_COOKIE_NAME = isProduction
+  ? "__Secure-life-quest-session"
+  : "life-quest-session";
 
 export async function setSessionCookie(token: string) {
   const cookieStore = await cookies();
@@ -8,9 +12,10 @@ export async function setSessionCookie(token: string) {
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isProduction,
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
+    priority: "high",
   });
 }
 

@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { getCurrentSession } from "@/lib/auth/get-session";
@@ -30,14 +31,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <div className="mx-auto grid min-h-screen max-w-7xl gap-4 px-3 py-4 lg:grid-cols-[240px_1fr] lg:px-6 lg:py-5">
         <aside className="quest-panel h-fit lg:sticky lg:top-5">
           <div className="rounded-2xl border border-white/6 bg-white/[0.02] p-4">
-            <p className="page-label">Life Quest</p>
-            <h1 className="mt-2 font-serif text-2xl text-stone-50">Codex</h1>
+            <Image
+              alt="Life Quest System"
+              className="h-auto w-full max-w-[15rem]"
+              height="73"
+              src="/logo-lockup.svg"
+              width="240"
+            />
             <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/6 bg-black/15 px-3 py-2.5">
               <div>
                 <p className="text-[0.65rem] uppercase tracking-[0.2em] text-stone-500">
                   Player
                 </p>
-                <Link className="mt-1 inline-flex text-sm font-medium text-stone-100 hover:text-[#f7e7bc]" href="/profile">
+                <Link
+                  className="mt-1 inline-flex text-sm font-medium text-stone-100 hover:text-[#f7e7bc]"
+                  href="/profile"
+                >
                   {session.username}
                 </Link>
               </div>
@@ -52,10 +61,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 <div>
                   <p className="setup-note-label">Setup required</p>
                   <p className="setup-note-copy">
-                    Add at least one task and one punishment to fully unlock the system.
+                    Add at least one task and one punishment to fully unlock the
+                    system.
                   </p>
                 </div>
-                <Link className="quest-button quest-button-secondary" href="/onboarding">
+                <Link
+                  className="quest-button quest-button-secondary"
+                  href="/onboarding"
+                >
                   Open setup
                 </Link>
               </div>
@@ -67,8 +80,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <details className="detail-toggle text-sm text-stone-400">
             <summary>System note</summary>
             <p className="mt-3 leading-7">
-              Anchor protects momentum. Full pushes growth. The goal is steady progress,
-              not perfect days.
+              Anchor protects momentum. Full pushes growth. The goal is steady
+              progress, not perfect days.
             </p>
           </details>
 

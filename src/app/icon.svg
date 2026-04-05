@@ -1,0 +1,28 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="36" y1="24" x2="220" y2="236" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151C26"/>
+      <stop offset="1" stop-color="#0B0F15"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="74" y1="56" x2="186" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1D79A"/>
+      <stop offset="1" stop-color="#B48642"/>
+    </linearGradient>
+    <filter id="glow" x="0" y="0" width="256" height="256" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="8" result="effect1_foregroundBlur_0_1"/>
+    </filter>
+  </defs>
+  <rect x="20" y="20" width="216" height="216" rx="56" fill="url(#bg)"/>
+  <rect x="20.5" y="20.5" width="215" height="215" rx="55.5" stroke="#D6B77A" stroke-opacity="0.18"/>
+  <g filter="url(#glow)" opacity="0.35">
+    <path d="M128 54L186 88V152C186 171.4 170.2 188.1 128 206C85.8 188.1 70 171.4 70 152V88L128 54Z" fill="#D6B77A"/>
+  </g>
+  <path d="M128 50L186 84V148C186 167.4 170.2 184.1 128 202C85.8 184.1 70 167.4 70 148V84L128 50Z" fill="#0E141D" stroke="url(#gold)" stroke-width="7"/>
+  <path d="M96 153V132H117V113H138V95H160" stroke="url(#gold)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="96" cy="153" r="8" fill="#F1D79A"/>
+  <circle cx="160" cy="95" r="8" fill="#F1D79A"/>
+  <path d="M166 62L168.595 69.4054L176 72L168.595 74.5946L166 82L163.405 74.5946L156 72L163.405 69.4054L166 62Z" fill="#F7E7BC"/>
+  <path d="M88 73L89.618 77.382L94 79L89.618 80.618L88 85L86.382 80.618L82 79L86.382 77.382L88 73Z" fill="#D6B77A" fill-opacity="0.85"/>
+</svg>

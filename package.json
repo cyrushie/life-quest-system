@@ -6,7 +6,16 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "auth:secret": "node scripts/generate-auth-secret.mjs",
+    "postinstall": "prisma generate"
+  },
+  "engines": {
+    "node": ">=20.11.0"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

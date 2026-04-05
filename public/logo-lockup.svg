@@ -1,0 +1,28 @@
+<svg width="720" height="220" viewBox="0 0 720 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lockup-gold" x1="62" y1="28" x2="160" y2="156" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1D79A"/>
+      <stop offset="1" stop-color="#B48642"/>
+    </linearGradient>
+    <linearGradient id="mark-bg" x1="24" y1="18" x2="184" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151C26"/>
+      <stop offset="1" stop-color="#0B0F15"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="20" width="160" height="160" rx="40" fill="url(#mark-bg)"/>
+  <rect x="20.5" y="20.5" width="159" height="159" rx="39.5" stroke="#D6B77A" stroke-opacity="0.18"/>
+  <path d="M100 42L144 68V116C144 130.7 132 143.4 100 157C68 143.4 56 130.7 56 116V68L100 42Z" fill="#0E141D" stroke="url(#lockup-gold)" stroke-width="5"/>
+  <path d="M76 119V103H92V89H108V76H124" stroke="url(#lockup-gold)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="76" cy="119" r="5.5" fill="#F1D79A"/>
+  <circle cx="124" cy="76" r="5.5" fill="#F1D79A"/>
+  <path d="M129 51L130.912 56.088L136 58L130.912 59.912L129 65L127.088 59.912L122 58L127.088 56.088L129 51Z" fill="#F7E7BC"/>
+  <text x="218" y="86" fill="#F6F1E4" font-family="'Palatino Linotype', 'Book Antiqua', serif" font-size="52" font-weight="700" letter-spacing="0.02em">
+    Life Quest
+  </text>
+  <text x="220" y="128" fill="#D6B77A" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="0.42em">
+    SYSTEM
+  </text>
+  <text x="220" y="162" fill="#9FA6AF" font-family="'Avenir Next', 'Segoe UI', sans-serif" font-size="18" font-weight="500" letter-spacing="0.01em">
+    momentum, levels, and daily progress
+  </text>
+</svg>

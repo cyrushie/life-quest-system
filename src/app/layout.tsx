@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Life Quest System",
   description:
     "A gamified task tracking system that turns daily routines into quests, levels, streaks, and private journaled progress.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
