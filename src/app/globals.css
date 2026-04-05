@@ -431,6 +431,20 @@ textarea:focus {
   display: none;
 }
 
+.archive-group-summary {
+  width: 100%;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.archive-group-summary > div {
+  min-width: 0;
+}
+
+.archive-group-summary .status-pill {
+  flex-shrink: 0;
+}
+
 .section-tabs {
   display: flex;
   flex-wrap: wrap;

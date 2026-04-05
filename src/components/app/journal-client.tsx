@@ -43,29 +43,37 @@ export function JournalClient({ refreshKey }: { refreshKey: string }) {
       </div>
 
       {data.groups.length ? (
-        data.groups.map((group) => (
+        data.groups.map((group, index) => (
           <section key={group.group} className="quest-panel">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-serif text-2xl text-stone-50">{group.group}</h2>
-              <span className="status-pill">
-                <strong>{group.entries.length}</strong> entries
-              </span>
-            </div>
-            <div className="mt-4 compact-list">
-              {group.entries.map((entry) => (
-                <article
-                  key={entry.id}
-                  className="rounded-[1.1rem] border border-white/6 bg-white/[0.025] px-4 py-3"
-                >
-                  <p className="text-xs uppercase tracking-[0.16em] text-stone-500">
-                    {entry.dateLabel}
+            <details className="archive-group detail-toggle" open={index === 0}>
+              <summary className="archive-group-summary">
+                <div>
+                  <p className="font-serif text-2xl text-stone-50">{group.group}</p>
+                  <p className="mt-2 text-sm leading-6 text-stone-400">
+                    {index === 0 ? "Current archive" : "Open to read this month"}
                   </p>
-                  <p className="mt-3 text-sm leading-7 text-stone-300">
-                    {entry.content || "No journal content saved for this day."}
-                  </p>
-                </article>
-              ))}
-            </div>
+                </div>
+                <span className="status-pill">
+                  <strong>{group.entries.length}</strong> entries
+                </span>
+              </summary>
+
+              <div className="mt-4 compact-list">
+                {group.entries.map((entry) => (
+                  <article
+                    key={entry.id}
+                    className="rounded-[1.1rem] border border-white/6 bg-white/[0.025] px-4 py-3"
+                  >
+                    <p className="text-xs uppercase tracking-[0.16em] text-stone-500">
+                      {entry.dateLabel}
+                    </p>
+                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-stone-300">
+                      {entry.content || "No journal content saved for this day."}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </details>
           </section>
         ))
       ) : (
