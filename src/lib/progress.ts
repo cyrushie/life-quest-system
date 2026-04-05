@@ -152,14 +152,36 @@ export async function syncDailyLog(
   const previousDayUsedQuestPass =
     previousExistingLog?.questPassUsed === true &&
     getDateKey(previousExistingLog.logDate) === previousDayKey;
+  const previousStreak =
+    previousExistingLog && getDateKey(previousExistingLog.logDate) === previousDayKey
+      ? previousExistingLog.streakValueForDay
+      : 0;
   const shouldUseQuestPass =
     tasks.length > 0 &&
     manualZero &&
     availableBefore > 0 &&
     !previousDayUsedQuestPass;
   const calculation = shouldUseQuestPass
-    ? calculateQuestPassProgress(tasks.map((task) => ({ fullQp: task.fullQp })))
-    : manualCalculation;
+    ? calculateQuestPassProgress(
+        tasks.map((task) => ({
+          anchorQp: task.anchorQp,
+          fullQp: task.fullQp,
+        })),
+        previousStreak,
+      )
+    : calculateDailyProgress({
+        previousStreak,
+        tasks: tasks.map((task) => {
+          const completion = completionMap.get(task.id);
+
+          return {
+            anchorCompleted: completion?.anchorCompleted ?? false,
+            fullCompleted: completion?.fullCompleted ?? false,
+            anchorQp: task.anchorQp,
+            fullQp: task.fullQp,
+          };
+        }),
+      });
 
   const updatedLog = await db.dailyLog.update({
     where: { id: log.id },
@@ -170,8 +192,7 @@ export async function syncDailyLog(
       bonusQp: calculation.bonusQp,
       totalQp: calculation.totalQp,
       expGained: calculation.expGained,
-      streakValueForDay:
-        calculation.totalQp >= 1 ? (previousExistingLog?.streakValueForDay ?? 0) + 1 : 0,
+      streakValueForDay: calculation.newStreak,
       questPassUsed: shouldUseQuestPass,
       allAnchorsCompleted: calculation.allAnchorsCompleted,
       threeFullBonusEarned: calculation.earnedFullBonus,
@@ -396,8 +417,14 @@ export async function recalculateUserProgress(userId: string) {
 
   for (const log of logs) {
     const completionMap = new Map(log.taskCompletions.map((item) => [item.taskId, item]));
+    const currentDateKey = getDateKey(log.logDate);
+    const previousDayKey = getDateKey(new Date(log.logDate.getTime() - 86_400_000));
+    const previousStreak =
+      previousLogDateKey === previousDayKey
+        ? streak
+        : 0;
     const manualCalculation = calculateDailyProgress({
-      previousStreak: 0,
+      previousStreak,
       tasks: tasks.map((task) => {
         const completion = completionMap.get(task.id);
 
@@ -410,19 +437,23 @@ export async function recalculateUserProgress(userId: string) {
       }),
     });
     const availableBefore = Math.max(getLevelState(totalExp).questPassesEarned - usedQuestPasses, 0);
-    const currentDateKey = getDateKey(log.logDate);
-    const previousDayKey = getDateKey(new Date(log.logDate.getTime() - 86_400_000));
     const canUseQuestPass: boolean =
       tasks.length > 0 &&
       manualCalculation.totalQp < 1 &&
       availableBefore > 0 &&
       !(previousQuestPassUsed && previousLogDateKey === previousDayKey);
     const finalCalculation = canUseQuestPass
-      ? calculateQuestPassProgress(tasks.map((task) => ({ fullQp: task.fullQp })))
+      ? calculateQuestPassProgress(
+          tasks.map((task) => ({
+            anchorQp: task.anchorQp,
+            fullQp: task.fullQp,
+          })),
+          previousStreak,
+        )
       : manualCalculation;
 
     totalExp += finalCalculation.expGained;
-    streak = finalCalculation.totalQp >= 1 ? streak + 1 : 0;
+    streak = finalCalculation.newStreak;
     if (canUseQuestPass) {
       usedQuestPasses += 1;
     }

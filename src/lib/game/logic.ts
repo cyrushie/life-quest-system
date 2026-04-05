@@ -33,7 +33,7 @@ export function calculateDailyProgress(
 
   const baseQp = input.tasks.reduce((sum, task) => {
     if (task.fullCompleted) {
-      return sum + task.fullQp;
+      return sum + task.anchorQp + task.fullQp;
     }
 
     if (task.anchorCompleted) {
@@ -50,7 +50,8 @@ export function calculateDailyProgress(
   const earnedFullBonus = fullCount >= 3;
   const fullBonus = earnedFullBonus ? 2 : 0;
   const beforeStreakBonus = baseQp + anchorBonus + fullBonus;
-  const streakContinues = beforeStreakBonus >= 1;
+  const dayQualifies = beforeStreakBonus >= 1;
+  const streakContinues = dayQualifies && input.previousStreak >= 1;
   const streakBonus = streakContinues ? 1 : 0;
   const totalQp = beforeStreakBonus + streakBonus;
 
@@ -62,23 +63,26 @@ export function calculateDailyProgress(
     totalQp,
     expGained: totalQp * EXP_PER_QP,
     streakContinues,
-    newStreak: streakContinues ? input.previousStreak + 1 : 0,
+    newStreak: dayQualifies ? (streakContinues ? input.previousStreak + 1 : 1) : 0,
     allAnchorsCompleted,
     earnedFullBonus,
   };
 }
 
 export function calculateQuestPassProgress(
-  tasks: Pick<QuestCompletion, "fullQp">[],
+  tasks: Pick<QuestCompletion, "anchorQp" | "fullQp">[],
+  previousStreak: number,
 ): DailyCalculationResult {
   const fullCount = tasks.length;
-  const baseQp = tasks.reduce((sum, task) => sum + task.fullQp, 0);
+  const baseQp = tasks.reduce((sum, task) => sum + task.anchorQp + task.fullQp, 0);
   const allAnchorsCompleted = tasks.length > 0;
   const anchorBonus = allAnchorsCompleted ? 1 : 0;
   const earnedFullBonus = fullCount >= 3;
   const fullBonus = earnedFullBonus ? 2 : 0;
   const beforeStreakBonus = baseQp + anchorBonus + fullBonus;
-  const streakBonus = beforeStreakBonus >= 1 ? 1 : 0;
+  const dayQualifies = beforeStreakBonus >= 1;
+  const streakContinues = dayQualifies && previousStreak >= 1;
+  const streakBonus = streakContinues ? 1 : 0;
   const totalQp = beforeStreakBonus + streakBonus;
 
   return {
@@ -88,8 +92,8 @@ export function calculateQuestPassProgress(
     bonusQp: anchorBonus + fullBonus + streakBonus,
     totalQp,
     expGained: totalQp * EXP_PER_QP,
-    streakContinues: totalQp >= 1,
-    newStreak: totalQp >= 1 ? 1 : 0,
+    streakContinues,
+    newStreak: dayQualifies ? (streakContinues ? previousStreak + 1 : 1) : 0,
     allAnchorsCompleted,
     earnedFullBonus,
   };

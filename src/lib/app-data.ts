@@ -14,7 +14,7 @@ import {
   WEEKDAY_ORDER,
 } from "@/lib/date";
 import { calculateDailyProgress } from "@/lib/game/logic";
-import { backfillMissedDayPunishments, getLevelState } from "@/lib/progress";
+import { backfillMissedDayPunishments, getLevelState, syncDailyLog } from "@/lib/progress";
 
 type PendingPunishmentRecord = {
   id: string;
@@ -376,8 +376,36 @@ function mapSocialUser(
   };
 }
 
+async function syncDateLogIfItExists(userId: string, dateKey: string) {
+  const logDate = new Date(`${dateKey}T00:00:00.000Z`);
+  const existingLog = await db.dailyLog.findUnique({
+    where: {
+      userId_logDate: {
+        userId,
+        logDate,
+      },
+    },
+    select: {
+      id: true,
+      logDate: true,
+      expGained: true,
+      totalQp: true,
+      questPassUsed: true,
+    },
+  });
+
+  if (!existingLog) {
+    return;
+  }
+
+  await syncDailyLog(userId, dateKey, {
+    existingLog,
+  });
+}
+
 export async function getDashboardData(userId: string) {
   await backfillMissedDayPunishments(userId);
+  await syncDateLogIfItExists(userId, getTodayDateKey());
 
   const [stats, todayLog, recentLogs, pendingPunishments] = await db.$transaction([
     db.userStats.findUnique({ where: { userId } }),
@@ -433,12 +461,25 @@ export async function getTodayData(userId: string, requestedDateKey = getTodayDa
   await backfillMissedDayPunishments(userId);
 
   const todayKey = getTodayDateKey();
+  if (requestedDateKey === todayKey) {
+    await syncDateLogIfItExists(userId, todayKey);
+  }
   const targetDate = new Date(`${requestedDateKey}T00:00:00.000Z`);
+  const previousDate = new Date(targetDate.getTime() - 86_400_000);
   const isToday = requestedDateKey === todayKey;
 
   const dayOfWeek = getWeekdayKey(targetDate);
 
-  const [user, stats, tasks, todayLog, journalEntry, pendingPunishments, exercisePlanItems] =
+  const [
+    user,
+    stats,
+    tasks,
+    todayLog,
+    previousDayLog,
+    journalEntry,
+    pendingPunishments,
+    exercisePlanItems,
+  ] =
     await db.$transaction([
     db.user.findUnique({
       where: { id: userId },
@@ -460,6 +501,18 @@ export async function getTodayData(userId: string, requestedDateKey = getTodayDa
         },
       },
       include: { taskCompletions: true },
+    }),
+    db.dailyLog.findUnique({
+      where: {
+        userId_logDate: {
+          userId,
+          logDate: previousDate,
+        },
+      },
+      select: {
+        totalQp: true,
+        streakValueForDay: true,
+      },
     }),
     db.journalEntry.findUnique({
       where: {
@@ -490,9 +543,12 @@ export async function getTodayData(userId: string, requestedDateKey = getTodayDa
   const canEdit = isDateKeyEditableForAccount(requestedDateKey, accountCreatedAt);
 
   const completionMap = new Map(todayLog?.taskCompletions.map((item) => [item.taskId, item]) ?? []);
+  const previousStreak = previousDayLog?.totalQp && previousDayLog.totalQp >= 1
+    ? previousDayLog.streakValueForDay
+    : 0;
 
-  const liveCalculation = calculateDailyProgress({
-    previousStreak: 0,
+  const derivedCalculation = calculateDailyProgress({
+    previousStreak,
     tasks: tasks.map((task) => {
       const completion = completionMap.get(task.id);
 
@@ -504,17 +560,32 @@ export async function getTodayData(userId: string, requestedDateKey = getTodayDa
       };
     }),
   });
+  const savedCalculation = todayLog
+    ? {
+        baseQp: todayLog.baseQp,
+        bonusQp: todayLog.bonusQp,
+        totalQp: todayLog.totalQp,
+        expGained: todayLog.expGained,
+        allAnchorsCompleted: todayLog.allAnchorsCompleted,
+        earnedFullBonus: todayLog.threeFullBonusEarned,
+        fullCount: todayLog.fullCount,
+      }
+    : null;
+  const liveCalculation = !canEdit && savedCalculation ? savedCalculation : derivedCalculation;
 
   return {
     todayKey: requestedDateKey,
     todayLabel: formatDisplayDate(targetDate),
     isToday,
     canEdit,
+    previousStreak,
     questPassUsed: todayLog?.questPassUsed ?? false,
     availableQuestPasses: stats?.questPassCount ?? 0,
     tasks: tasks.map((task) => {
       const completion = completionMap.get(task.id);
-      const status = completion?.fullCompleted
+      const status = todayLog?.questPassUsed
+        ? "full"
+        : completion?.fullCompleted
         ? "full"
         : completion?.anchorCompleted
           ? "anchor"
@@ -1098,6 +1169,7 @@ export async function getGuildData(userId: string) {
 
 export async function getHistoryData(userId: string) {
   await backfillMissedDayPunishments(userId);
+  await syncDateLogIfItExists(userId, getTodayDateKey());
 
   const [user, logs, punishments, journalEntries] = await db.$transaction([
     db.user.findUnique({

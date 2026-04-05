@@ -45,6 +45,7 @@ type TodayData = {
   todayLabel: string;
   isToday: boolean;
   canEdit: boolean;
+  previousStreak: number;
   questPassUsed: boolean;
   availableQuestPasses: number;
   tasks: TodayTask[];
@@ -135,7 +136,7 @@ export function TodayClient({
   }
 
   const todayData = data;
-  const liveCalculation = calculateLiveCalculation(optimisticTasks);
+  const liveCalculation = calculateLiveCalculation(optimisticTasks, todayData.previousStreak);
   const syncingCount =
     syncingTaskIds.length +
     syncingPunishmentItemIds.length +
@@ -178,7 +179,7 @@ export function TodayClient({
       tasks: nextTasks,
       journalContent: nextJournalContent,
       pendingPunishments: nextPunishments,
-      liveCalculation: calculateLiveCalculation(nextTasks),
+      liveCalculation: calculateLiveCalculation(nextTasks, todayData.previousStreak),
     });
   }
 
@@ -412,11 +413,15 @@ export function TodayClient({
         )}
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <SummaryCard label="Base" value={liveCalculation.baseQp} />
-          <SummaryCard label="Bonus" value={liveCalculation.bonusQp} />
+          <SummaryCard label="Task QP" value={liveCalculation.baseQp} />
+          <SummaryCard label="Bonus QP" value={liveCalculation.bonusQp} />
           <SummaryCard label="Total" value={liveCalculation.totalQp} />
           <SummaryCard label="EXP" value={`+${liveCalculation.expGained}`} />
         </div>
+        <p className="page-copy mt-3">
+          Task QP comes from completed anchor and full routines. Bonus QP comes from all
+          anchors, 3+ full routines, and continuing the previous day streak.
+        </p>
 
         <div className="mt-3 flex flex-wrap gap-2">
           <span className={`status-pill ${todayData.questPassUsed ? "status-pill-live" : ""}`}>
@@ -704,9 +709,9 @@ export function TodayClient({
   );
 }
 
-function calculateLiveCalculation(tasks: TodayTask[]) {
+function calculateLiveCalculation(tasks: TodayTask[], previousStreak: number) {
   return calculateDailyProgress({
-    previousStreak: 0,
+    previousStreak,
     tasks: tasks.map((task) => ({
       anchorCompleted: task.status === "anchor" || task.status === "full",
       fullCompleted: task.status === "full",

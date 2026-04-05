@@ -12,7 +12,7 @@ const sections = [
     title: "Tasks",
     items: [
       "Every task has an anchor routine and a full routine.",
-      "Full completion also counts as anchor completion for that task.",
+      "Full completion counts as anchor completion and grants both the anchor QP and the full QP for that task.",
       "Users can customize tasks, edit them, and archive them anytime.",
       "Tasks repeat daily.",
     ],
@@ -22,7 +22,7 @@ const sections = [
     items: [
       "Complete all task anchors in a day to gain +1 bonus QP.",
       "Complete 3 or more full routines in a day to gain +2 bonus QP once.",
-      "If a day earns at least 1 QP before streak bonus, the streak continues and grants +1 QP.",
+      "If yesterday already earned at least 1 QP and today earns at least 1 QP before streak bonus, the streak continues and grants +1 QP.",
       "Quest Passes are earned at levels 10, 20, 30, and so on.",
       "Quest Passes auto-complete a full day and count for streaks and bonuses.",
     ],
