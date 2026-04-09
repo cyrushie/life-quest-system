@@ -13,9 +13,9 @@ import {
   setCachedJson,
   useCachedJson,
 } from "@/lib/client/use-cached-json";
+import { usePostgresChangesChannel } from "@/lib/client/use-postgres-changes-channel";
 import { broadcastAppSync, subscribeToAppSync } from "@/lib/client/app-sync";
 import { createSafeId } from "@/lib/id";
-import { usePrivateBroadcastChannel } from "@/lib/client/use-private-broadcast-channel";
 
 import {
   NotificationFeed,
@@ -49,9 +49,16 @@ export function NotificationsPageClient({
   const {
     connectionState: notificationConnectionState,
     lastError: notificationConnectionError,
-  } = usePrivateBroadcastChannel({
-    topic: `notifications:${userId}`,
-    eventNames: ["notification-sync"],
+  } = usePostgresChangesChannel({
+    channelName: `notifications-db-${userId}`,
+    changes: [
+      {
+        event: "*",
+        schema: "public",
+        table: "Notification",
+        filter: `userId=eq.${userId}`,
+      },
+    ],
     onMessage: () => {
       refresh();
     },

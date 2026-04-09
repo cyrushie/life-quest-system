@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:import-json": "node scripts/import-prisma-json-to-supabase.mjs",
+    "realtime:setup": "node scripts/setup-postgres-changes-realtime.mjs",
     "auth:secret": "node scripts/generate-auth-secret.mjs",
     "postinstall": "prisma generate"
   },

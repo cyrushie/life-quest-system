@@ -13,8 +13,8 @@ import {
 } from "@/app/(app)/actions";
 import {
   combineRealtimeConnectionStates,
-  usePrivateBroadcastChannel,
 } from "@/lib/client/use-private-broadcast-channel";
+import { usePostgresChangesChannel } from "@/lib/client/use-postgres-changes-channel";
 
 import { LiveStatusPill } from "./live-status-pill";
 import { ProgressTrendChart } from "./progress-trend-chart";
@@ -76,9 +76,28 @@ export function ProfileView({
   const {
     connectionState: profileConnectionState,
     lastError: profileConnectionError,
-  } = usePrivateBroadcastChannel({
-    topic: `profile:${data.userId}`,
-    eventNames: ["profile-sync"],
+  } = usePostgresChangesChannel({
+    channelName: `profile-db-${data.userId}`,
+    changes: [
+      {
+        event: "*",
+        schema: "public",
+        table: "UserStats",
+        filter: `userId=eq.${data.userId}`,
+      },
+      {
+        event: "*",
+        schema: "public",
+        table: "DailyLog",
+        filter: `userId=eq.${data.userId}`,
+      },
+      {
+        event: "*",
+        schema: "public",
+        table: "GuildMembership",
+        filter: `userId=eq.${data.userId}`,
+      },
+    ],
     onMessage: () => {
       router.refresh();
     },
@@ -87,9 +106,22 @@ export function ProfileView({
   const {
     connectionState: socialConnectionState,
     lastError: socialConnectionError,
-  } = usePrivateBroadcastChannel({
-    topic: `social:${viewerUserId}`,
-    eventNames: ["social-sync"],
+  } = usePostgresChangesChannel({
+    channelName: `profile-friendships-db-${viewerUserId}`,
+    changes: [
+      {
+        event: "*",
+        schema: "public",
+        table: "Friendship",
+        filter: `requesterId=eq.${viewerUserId}`,
+      },
+      {
+        event: "*",
+        schema: "public",
+        table: "Friendship",
+        filter: `addresseeId=eq.${viewerUserId}`,
+      },
+    ],
     onMessage: () => {
       router.refresh();
     },

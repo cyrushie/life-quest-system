@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { broadcastNotificationSync } from "@/lib/supabase/realtime-broadcast";
 
 type NotificationInput = {
   userId: string;
@@ -20,8 +19,6 @@ export async function createNotification(input: NotificationInput) {
     data: input,
   });
 
-  await broadcastNotificationSync([input.userId], "notification-created");
-
   return notification;
 }
 
@@ -37,11 +34,6 @@ export async function createNotifications(inputs: NotificationInput[]) {
       }),
     ),
   );
-
-  await broadcastNotificationSync(
-    inputs.map((input) => input.userId),
-    "notification-created",
-  );
 }
 
 export async function markNotificationsReadForHref(userId: string, href: string) {
@@ -55,6 +47,4 @@ export async function markNotificationsReadForHref(userId: string, href: string)
       readAt: new Date(),
     },
   });
-
-  await broadcastNotificationSync([userId], "notification-read-for-href");
 }

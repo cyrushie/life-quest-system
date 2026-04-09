@@ -11,7 +11,7 @@ import {
   removeFriendAction,
   sendFriendRequestAction,
 } from "@/app/(app)/actions";
-import { usePrivateBroadcastChannel } from "@/lib/client/use-private-broadcast-channel";
+import { usePostgresChangesChannel } from "@/lib/client/use-postgres-changes-channel";
 
 import { LiveStatusPill } from "./live-status-pill";
 
@@ -74,9 +74,22 @@ export function FriendsView({
   const {
     connectionState: socialConnectionState,
     lastError: socialConnectionError,
-  } = usePrivateBroadcastChannel({
-    topic: `social:${userId}`,
-    eventNames: ["social-sync"],
+  } = usePostgresChangesChannel({
+    channelName: `friendships-db-${userId}`,
+    changes: [
+      {
+        event: "*",
+        schema: "public",
+        table: "Friendship",
+        filter: `requesterId=eq.${userId}`,
+      },
+      {
+        event: "*",
+        schema: "public",
+        table: "Friendship",
+        filter: `addresseeId=eq.${userId}`,
+      },
+    ],
     onMessage: () => {
       router.refresh();
     },

@@ -16,7 +16,7 @@ import {
 import { ServerForm } from "@/app/(app)/server-form";
 import { broadcastAppSync } from "@/lib/client/app-sync";
 import { createSafeId } from "@/lib/id";
-import { usePrivateBroadcastChannel } from "@/lib/client/use-private-broadcast-channel";
+import { usePostgresChangesChannel } from "@/lib/client/use-postgres-changes-channel";
 
 import { LiveStatusPill } from "./live-status-pill";
 
@@ -131,46 +131,33 @@ export function GuildView({
   const {
     connectionState: guildConnectionState,
     lastError: guildConnectionError,
-  } = usePrivateBroadcastChannel({
-    topic: data.hasGuild ? `guild:${data.guild.id}` : null,
+  } = usePostgresChangesChannel({
+    channelName: data.hasGuild ? `guild-db-${data.guild.id}` : null,
     enabled: data.hasGuild,
-    eventNames: ["message-created", "guild-sync"],
-    onMessage: ({ event, payload }) => {
+    changes: data.hasGuild
+      ? [
+          {
+            event: "*",
+            schema: "public",
+            table: "GuildMessage",
+            filter: `guildId=eq.${data.guild.id}`,
+          },
+          {
+            event: "*",
+            schema: "public",
+            table: "GuildMembership",
+            filter: `guildId=eq.${data.guild.id}`,
+          },
+          {
+            event: "*",
+            schema: "public",
+            table: "Guild",
+            filter: `id=eq.${data.guild.id}`,
+          },
+        ]
+      : [],
+    onMessage: () => {
       if (!data.hasGuild) {
-        return;
-      }
-
-      if (event === "guild-sync") {
-        refreshGuildView();
-        return;
-      }
-
-      const message = payload.message as GuildBoardMessage | undefined;
-
-      if (!message) {
-        refreshGuildView();
-        return;
-      }
-
-      if (message.username === selfUsername) {
-        refreshGuildView();
-        return;
-      }
-
-      if (activeTab === "board") {
-        setOptimisticMessages((current) => {
-          if (current.some((entry) => entry.id === message.id)) {
-            return current;
-          }
-
-          return [
-            {
-              ...message,
-              isSelf: false,
-            },
-            ...current,
-          ];
-        });
         return;
       }
 
