@@ -47,6 +47,9 @@ export function usePrivateBroadcastChannel({
 }) {
   const messageRef = useRef(onMessage);
   const errorRef = useRef(onError);
+  const connectionStateRef = useRef<RealtimeConnectionState>(
+    enabled && topic && eventNames.length ? "connecting" : "idle",
+  );
   const eventKey = eventNames.join("|");
   const [connectionState, setConnectionState] = useState<RealtimeConnectionState>(
     enabled && topic && eventNames.length ? "connecting" : "idle",
@@ -57,6 +60,10 @@ export function usePrivateBroadcastChannel({
     messageRef.current = onMessage;
     errorRef.current = onError;
   }, [onError, onMessage]);
+
+  useEffect(() => {
+    connectionStateRef.current = connectionState;
+  }, [connectionState]);
 
   useEffect(() => {
     if (!enabled || !topic || !eventKey) {
@@ -90,7 +97,9 @@ export function usePrivateBroadcastChannel({
     }
 
     async function connect() {
-      setConnectionState("connecting");
+      if (connectionStateRef.current !== "fallback") {
+        setConnectionState("connecting");
+      }
 
       try {
         const token = await getBrowserSupabaseRealtimeToken();
