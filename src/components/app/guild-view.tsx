@@ -16,6 +16,9 @@ import {
 import { ServerForm } from "@/app/(app)/server-form";
 import { broadcastAppSync } from "@/lib/client/app-sync";
 import { createSafeId } from "@/lib/id";
+import { usePrivateBroadcastChannel } from "@/lib/client/use-private-broadcast-channel";
+
+import { LiveStatusPill } from "./live-status-pill";
 
 type GuildData =
   | {
@@ -117,6 +120,101 @@ export function GuildView({
   const threadRef = useRef<HTMLDivElement>(null);
   const visibleBoardUnreadCount =
     data.hasGuild && activeTab !== "board" ? serverBoardUnreadCount : 0;
+  const selfUsername = data.hasGuild
+    ? data.members.find((member) => member.isSelf)?.username ?? "You"
+    : "You";
+
+  function refreshGuildView() {
+    router.refresh();
+  }
+
+  const {
+    connectionState: guildConnectionState,
+    lastError: guildConnectionError,
+  } = usePrivateBroadcastChannel({
+    topic: data.hasGuild ? `guild:${data.guild.id}` : null,
+    enabled: data.hasGuild,
+    eventNames: ["message-created", "guild-sync"],
+    onMessage: ({ event, payload }) => {
+      if (!data.hasGuild) {
+        return;
+      }
+
+      if (event === "guild-sync") {
+        refreshGuildView();
+        return;
+      }
+
+      const message = payload.message as GuildBoardMessage | undefined;
+
+      if (!message) {
+        refreshGuildView();
+        return;
+      }
+
+      if (message.username === selfUsername) {
+        refreshGuildView();
+        return;
+      }
+
+      if (activeTab === "board") {
+        setOptimisticMessages((current) => {
+          if (current.some((entry) => entry.id === message.id)) {
+            return current;
+          }
+
+          return [
+            {
+              ...message,
+              isSelf: false,
+            },
+            ...current,
+          ];
+        });
+        return;
+      }
+
+      refreshGuildView();
+    },
+  });
+
+  useEffect(() => {
+    if (!data.hasGuild || guildConnectionState === "live") {
+      return;
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+
+    const handleFocus = () => {
+      router.refresh();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [data.hasGuild, guildConnectionState, router]);
+
+  useEffect(() => {
+    if (!data.hasGuild || guildConnectionState !== "fallback") {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [data.hasGuild, guildConnectionState, router]);
 
   useEffect(() => {
     if (!data.hasGuild || activeTab !== "board") {
@@ -145,8 +243,6 @@ export function GuildView({
       return;
     }
 
-    const selfUsername =
-      data.members.find((member) => member.isSelf)?.username ?? "You";
     const optimisticId = `optimistic-${createSafeId()}`;
 
     setMessageFeedback(null);
@@ -182,7 +278,10 @@ export function GuildView({
 
       broadcastAppSync("guild-message-sent");
       router.replace("/guild?tab=board");
-      router.refresh();
+
+      if (guildConnectionState !== "live") {
+        router.refresh();
+      }
     });
   }
 
@@ -200,12 +299,6 @@ export function GuildView({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {liveLabel ? (
-                <span className="status-pill status-pill-live">
-                  <span className="status-dot" />
-                  {liveLabel}
-                </span>
-              ) : null}
               <Link className="quest-button quest-button-secondary" href="/friends">
                 Open friends
               </Link>
@@ -335,12 +428,12 @@ export function GuildView({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {liveLabel ? (
-              <span className="status-pill status-pill-live">
-                <span className="status-dot" />
-                {liveLabel}
-              </span>
-            ) : null}
+            <LiveStatusPill
+              fallbackLabel="Fallback sync"
+              liveLabel={liveLabel ?? "Live"}
+              state={guildConnectionState}
+              title={guildConnectionError ?? "Guild board updates refresh live while connected."}
+            />
             <span className="status-pill">{roleLabel(data.guild.role)}</span>
             <span className="status-pill">
               <strong>{data.guild.memberCount}</strong> members

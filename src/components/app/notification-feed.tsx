@@ -1,5 +1,9 @@
 "use client";
 
+import { type RealtimeConnectionState } from "@/lib/client/use-private-broadcast-channel";
+
+import { LiveStatusPill } from "./live-status-pill";
+
 export type NotificationEventItem = {
   id: string;
   kind: "event";
@@ -46,6 +50,10 @@ type NotificationFeedProps = {
   busy: boolean;
   onMarkAllRead: () => void;
   onOpenItem: (item: NotificationEventItem | NotificationSystemItem) => void;
+  realtimeStatus?: {
+    state: RealtimeConnectionState;
+    lastError?: string | null;
+  };
 };
 
 export function NotificationFeed({
@@ -54,6 +62,7 @@ export function NotificationFeed({
   busy,
   onMarkAllRead,
   onOpenItem,
+  realtimeStatus,
 }: NotificationFeedProps) {
   const previewNotifications =
     mode === "compact" ? data.notifications.slice(0, 6) : data.notifications;
@@ -69,6 +78,16 @@ export function NotificationFeed({
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {realtimeStatus ? (
+            <LiveStatusPill
+              fallbackLabel="Fallback sync"
+              liveLabel="Live"
+              state={realtimeStatus.state}
+              title={
+                realtimeStatus.lastError ?? "Alerts update live while the Realtime link is healthy."
+              }
+            />
+          ) : null}
           <span className="status-pill">
             <strong>{data.unreadCount}</strong> unread
           </span>

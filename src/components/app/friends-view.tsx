@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   acceptFriendRequestAction,
@@ -10,6 +11,9 @@ import {
   removeFriendAction,
   sendFriendRequestAction,
 } from "@/app/(app)/actions";
+import { usePrivateBroadcastChannel } from "@/lib/client/use-private-broadcast-channel";
+
+import { LiveStatusPill } from "./live-status-pill";
 
 type FriendsData = {
   query: string;
@@ -55,14 +59,66 @@ type FriendsData = {
 
 export function FriendsView({
   data,
+  userId,
   liveLabel,
 }: {
   data: FriendsData;
+  userId: string;
   liveLabel?: string;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"requests" | "friends" | "discover">(
     data.incomingRequests.length || data.outgoingRequests.length ? "requests" : "friends",
   );
+
+  const {
+    connectionState: socialConnectionState,
+    lastError: socialConnectionError,
+  } = usePrivateBroadcastChannel({
+    topic: `social:${userId}`,
+    eventNames: ["social-sync"],
+    onMessage: () => {
+      router.refresh();
+    },
+  });
+
+  useEffect(() => {
+    if (socialConnectionState === "live") {
+      return;
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+
+    const handleFocus = () => {
+      router.refresh();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [router, socialConnectionState]);
+
+  useEffect(() => {
+    if (socialConnectionState !== "fallback") {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [router, socialConnectionState]);
 
   return (
     <div className="grid gap-4">
@@ -76,12 +132,12 @@ export function FriendsView({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {liveLabel ? (
-              <span className="status-pill status-pill-live">
-                <span className="status-dot" />
-                {liveLabel}
-              </span>
-            ) : null}
+            <LiveStatusPill
+              fallbackLabel="Fallback sync"
+              liveLabel={liveLabel ?? "Live"}
+              state={socialConnectionState}
+              title={socialConnectionError ?? "Friend activity refreshes live while connected."}
+            />
             <Link className="quest-button" href="/profile">
               Open profile
             </Link>

@@ -15,6 +15,7 @@ import {
 } from "@/lib/client/use-cached-json";
 import { broadcastAppSync, subscribeToAppSync } from "@/lib/client/app-sync";
 import { createSafeId } from "@/lib/id";
+import { usePrivateBroadcastChannel } from "@/lib/client/use-private-broadcast-channel";
 
 import {
   NotificationFeed,
@@ -25,7 +26,7 @@ import {
 
 const NOTIFICATIONS_API_URL = "/api/app/notifications";
 
-export function NotificationCenter() {
+export function NotificationCenter({ userId }: { userId: string }) {
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -49,13 +50,40 @@ export function NotificationCenter() {
     setRefreshKey(createSafeId());
   }
 
+  const {
+    connectionState: notificationConnectionState,
+    lastError: notificationConnectionError,
+  } = usePrivateBroadcastChannel({
+    topic: `notifications:${userId}`,
+    eventNames: ["notification-sync"],
+    onMessage: () => {
+      refreshNotifications();
+    },
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeToAppSync(() => {
       refreshNotifications();
     });
-    const intervalId = window.setInterval(() => {
-      refreshNotifications();
-    }, 12000);
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!panelRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      unsubscribe();
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (notificationConnectionState === "live") {
+      return;
+    }
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
@@ -67,24 +95,28 @@ export function NotificationCenter() {
       refreshNotifications();
     };
 
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!panelRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleFocus);
-    document.addEventListener("mousedown", handlePointerDown);
 
     return () => {
-      unsubscribe();
-      window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("mousedown", handlePointerDown);
     };
-  }, []);
+  }, [notificationConnectionState]);
+
+  useEffect(() => {
+    if (notificationConnectionState !== "fallback") {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      refreshNotifications();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [notificationConnectionState]);
 
   function updateLocalNotifications(next: NotificationsData) {
     setCachedJson(NOTIFICATIONS_API_URL, next);
@@ -134,7 +166,6 @@ export function NotificationCenter() {
     startTransition(async () => {
       await markAllNotificationsReadAction();
       broadcastAppSync("notifications-read-all");
-      router.refresh();
     });
   }
 
@@ -147,7 +178,6 @@ export function NotificationCenter() {
           await markGuildBoardSeenAction();
           broadcastAppSync("guild-board-opened");
           router.push(item.href);
-          router.refresh();
         });
         setIsOpen(false);
         return;
@@ -161,7 +191,6 @@ export function NotificationCenter() {
         await markNotificationReadAction(formData);
         broadcastAppSync("notification-opened");
         router.push(item.href);
-        router.refresh();
       });
     } else {
       router.push(item.href);
@@ -176,6 +205,14 @@ export function NotificationCenter() {
         aria-expanded={isOpen}
         aria-label="Open notifications"
         className="quest-button quest-button-secondary relative inline-flex min-w-[3.25rem] items-center justify-center px-3"
+        title={
+          notificationConnectionError ??
+          (notificationConnectionState === "fallback"
+            ? "Realtime unavailable. Alerts are using fallback refresh."
+            : notificationConnectionState === "connecting"
+              ? "Connecting alerts..."
+              : "Alerts update live.")
+        }
         onClick={() =>
           setIsOpen((current) => {
             const next = !current;
@@ -224,6 +261,10 @@ export function NotificationCenter() {
                 mode="compact"
                 onMarkAllRead={handleMarkAllRead}
                 onOpenItem={handleOpenItem}
+                realtimeStatus={{
+                  state: notificationConnectionState,
+                  lastError: notificationConnectionError,
+                }}
               />
 
               <div className="mt-4 flex justify-end">

@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 
-import { LiveRouteRefresh } from "@/components/app/live-route-refresh";
 import { ProfileView } from "@/components/app/profile-view";
 import { getCurrentSession } from "@/lib/auth/get-session";
 import { getProfileData } from "@/lib/app-data";
@@ -26,9 +25,6 @@ export default async function AdventurerPage({ params }: AdventurerPageProps) {
   }
 
   return (
-    <>
-      <LiveRouteRefresh intervalMs={8000} />
-      <ProfileView data={data} liveLabel="Auto-updates" />
-    </>
+    <ProfileView data={data} liveLabel="Live while open" viewerUserId={session.userId} />
   );
 }

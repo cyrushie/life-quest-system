@@ -92,7 +92,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="space-y-4">
           <div className="flex justify-end">
-            <NotificationCenter />
+            <NotificationCenter userId={session.userId} />
           </div>
           <main className="space-y-4">{children}</main>
         </div>

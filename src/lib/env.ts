@@ -17,3 +17,22 @@ export function getAuthSecret() {
 
   return secret;
 }
+
+export function getSupabaseUrl() {
+  return requireEnv("NEXT_PUBLIC_SUPABASE_URL");
+}
+
+export function getSupabasePublishableKey() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+  );
+}
+
+export function getSupabaseServiceRoleKey() {
+  return requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+}
+
+export function getSupabaseJwtSecret() {
+  return requireEnv("SUPABASE_JWT_SECRET");
+}

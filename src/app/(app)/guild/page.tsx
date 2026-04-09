@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { GuildView } from "@/components/app/guild-view";
-import { LiveRouteRefresh } from "@/components/app/live-route-refresh";
 import { getCurrentSession } from "@/lib/auth/get-session";
 import { getGuildData } from "@/lib/app-data";
 
@@ -26,7 +25,6 @@ export default async function GuildPage({ searchParams }: GuildPageProps) {
 
   return (
     <>
-      <LiveRouteRefresh intervalMs={8000} />
       <GuildView
         key={viewKey}
         data={data}

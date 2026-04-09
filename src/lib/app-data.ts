@@ -990,6 +990,7 @@ export async function getProfileData(viewerUserId: string, username: string) {
   };
 
   return {
+    userId: profileUser.id,
     username: profileUser.username,
     joinedLabel: formatDisplayDate(profileUser.createdAt),
     isSelf: profileUser.id === viewerUserId,

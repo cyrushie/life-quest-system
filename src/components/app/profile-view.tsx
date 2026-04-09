@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   acceptFriendRequestAction,
@@ -7,10 +11,16 @@ import {
   removeFriendAction,
   sendFriendRequestAction,
 } from "@/app/(app)/actions";
+import {
+  combineRealtimeConnectionStates,
+  usePrivateBroadcastChannel,
+} from "@/lib/client/use-private-broadcast-channel";
 
+import { LiveStatusPill } from "./live-status-pill";
 import { ProgressTrendChart } from "./progress-trend-chart";
 
 type ProfileData = {
+  userId: string;
   username: string;
   joinedLabel: string;
   isSelf: boolean;
@@ -48,17 +58,86 @@ type ProfileData = {
 
 export function ProfileView({
   data,
+  viewerUserId,
   liveLabel,
 }: {
   data: ProfileData;
+  viewerUserId: string;
   liveLabel?: string;
 }) {
+  const router = useRouter();
   const statCards = [
     { label: "Level", value: data.stats.currentLevel },
     { label: "Title", value: data.stats.currentTitle },
     { label: "Streak", value: `${data.stats.currentStreak}d` },
     { label: "Quest passes", value: data.stats.questPassCount },
   ];
+
+  const {
+    connectionState: profileConnectionState,
+    lastError: profileConnectionError,
+  } = usePrivateBroadcastChannel({
+    topic: `profile:${data.userId}`,
+    eventNames: ["profile-sync"],
+    onMessage: () => {
+      router.refresh();
+    },
+  });
+
+  const {
+    connectionState: socialConnectionState,
+    lastError: socialConnectionError,
+  } = usePrivateBroadcastChannel({
+    topic: `social:${viewerUserId}`,
+    eventNames: ["social-sync"],
+    onMessage: () => {
+      router.refresh();
+    },
+  });
+
+  const liveConnectionState = combineRealtimeConnectionStates(
+    profileConnectionState,
+    socialConnectionState,
+  );
+  const liveConnectionError = profileConnectionError ?? socialConnectionError;
+
+  useEffect(() => {
+    if (liveConnectionState === "live") {
+      return;
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+
+    const handleFocus = () => {
+      router.refresh();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [liveConnectionState, router]);
+
+  useEffect(() => {
+    if (liveConnectionState !== "fallback") {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [liveConnectionState, router]);
 
   return (
     <div className="grid gap-4">
@@ -82,12 +161,12 @@ export function ProfileView({
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            {liveLabel ? (
-              <span className="status-pill status-pill-live">
-                <span className="status-dot" />
-                {liveLabel}
-              </span>
-            ) : null}
+            <LiveStatusPill
+              fallbackLabel="Fallback sync"
+              liveLabel={liveLabel ?? "Live"}
+              state={liveConnectionState}
+              title={liveConnectionError ?? "Profile data refreshes live while connected."}
+            />
             <span className="status-pill">
               <strong>{data.friendCount}</strong> friend{data.friendCount === 1 ? "" : "s"}
             </span>

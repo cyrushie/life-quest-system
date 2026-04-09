@@ -377,6 +377,28 @@ textarea:focus {
   animation: pulse-orb 1.4s ease-out infinite;
 }
 
+.status-pill-connecting {
+  color: #d7dce5;
+}
+
+.status-pill-fallback {
+  border-color: rgba(212, 138, 138, 0.16);
+  background: rgba(212, 138, 138, 0.08);
+  color: #f0c6c6;
+}
+
+.status-dot-connecting {
+  background: #98a2b3;
+}
+
+.status-dot-fallback {
+  background: var(--danger);
+}
+
+.status-dot-muted {
+  background: rgba(255, 255, 255, 0.28);
+}
+
 .mini-card {
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.025);

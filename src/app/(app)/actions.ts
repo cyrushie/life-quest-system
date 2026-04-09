@@ -22,6 +22,13 @@ import {
   syncDailyLog,
   updateOnboardingStatus,
 } from "@/lib/progress";
+import {
+  broadcastGuildSync,
+  broadcastGuildMessage,
+  broadcastNotificationSync,
+  broadcastProfileSync,
+  broadcastSocialSync,
+} from "@/lib/supabase/realtime-broadcast";
 
 type FormState = {
   error?: string;
@@ -68,6 +75,48 @@ async function revalidateGuildRelatedRoutes(usernames: string[]) {
     "/friends",
     "/profile",
     ...uniqueUsernames.map((username) => `/adventurers/${username}`),
+  ]);
+}
+
+async function getAcceptedFriendIdsForUsers(userIds: string[]) {
+  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+
+  if (!uniqueUserIds.length) {
+    return [];
+  }
+
+  const friendships = await db.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [
+        { requesterId: { in: uniqueUserIds } },
+        { addresseeId: { in: uniqueUserIds } },
+      ],
+    },
+    select: {
+      requesterId: true,
+      addresseeId: true,
+    },
+  });
+
+  return [
+    ...new Set(
+      friendships.flatMap((friendship) => [friendship.requesterId, friendship.addresseeId]),
+    ),
+  ];
+}
+
+async function broadcastSocialAndProfileForUsers(userIds: string[], reason: string) {
+  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+
+  if (!uniqueUserIds.length) {
+    return;
+  }
+
+  const friendAudience = await getAcceptedFriendIdsForUsers(uniqueUserIds);
+  await Promise.all([
+    broadcastProfileSync(uniqueUserIds, reason),
+    broadcastSocialSync([...uniqueUserIds, ...friendAudience], reason),
   ]);
 }
 
@@ -369,6 +418,8 @@ export async function setTaskCompletionAction(formData: FormData) {
       questPassUsed: log.questPassUsed,
     },
   });
+
+  await broadcastSocialAndProfileForUsers([session.userId], "progress-updated");
 }
 
 export async function saveJournalAction(
@@ -401,6 +452,8 @@ export async function saveJournalAction(
       content,
     },
   });
+
+  await broadcastProfileSync([session.userId], "journal-updated");
 
   return { success: "Journal saved." };
 }
@@ -647,6 +700,11 @@ export async function sendFriendRequestAction(formData: FormData) {
     `/adventurers/${session.username}`,
     `/adventurers/${targetUser.username}`,
   ]);
+
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, targetUser.id],
+    "friendship-updated",
+  );
 }
 
 export async function declineFriendRequestAction(formData: FormData) {
@@ -698,6 +756,11 @@ export async function declineFriendRequestAction(formData: FormData) {
     `/adventurers/${session.username}`,
     `/adventurers/${request.requester.username}`,
   ]);
+
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, request.requester.id],
+    "friendship-updated",
+  );
 }
 
 export async function acceptFriendRequestAction(formData: FormData) {
@@ -761,6 +824,11 @@ export async function acceptFriendRequestAction(formData: FormData) {
     `/adventurers/${session.username}`,
     `/adventurers/${request.requester.username}`,
   ]);
+
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, request.requester.id],
+    "friendship-updated",
+  );
 }
 
 export async function cancelFriendRequestAction(formData: FormData) {
@@ -777,7 +845,7 @@ export async function cancelFriendRequestAction(formData: FormData) {
         },
         include: {
           addressee: {
-            select: { username: true },
+            select: { id: true, username: true },
           },
         },
       })
@@ -792,7 +860,7 @@ export async function cancelFriendRequestAction(formData: FormData) {
           },
           include: {
             addressee: {
-              select: { username: true },
+              select: { id: true, username: true },
             },
           },
         })
@@ -812,6 +880,11 @@ export async function cancelFriendRequestAction(formData: FormData) {
     `/adventurers/${session.username}`,
     `/adventurers/${request.addressee.username}`,
   ]);
+
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, request.addressee.id],
+    "friendship-updated",
+  );
 }
 
 export async function removeFriendAction(formData: FormData) {
@@ -862,6 +935,11 @@ export async function removeFriendAction(formData: FormData) {
     `/adventurers/${session.username}`,
     `/adventurers/${targetUser.username}`,
   ]);
+
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, targetUser.id],
+    "friendship-updated",
+  );
 }
 
 export async function saveGuildAction(
@@ -912,6 +990,9 @@ export async function saveGuildAction(
       },
     });
 
+    await broadcastGuildSync(guildId, "guild-updated");
+    await broadcastSocialAndProfileForUsers([session.userId], "guild-updated");
+
     await revalidateGuildRelatedRoutes([
       session.username,
       ...ownerMembership.guild.members.map((member) => member.user.username),
@@ -950,6 +1031,8 @@ export async function saveGuildAction(
       },
     });
   });
+
+  await broadcastSocialAndProfileForUsers([session.userId], "guild-created");
 
   await revalidateGuildRelatedRoutes([session.username]);
 
@@ -1022,6 +1105,12 @@ export async function joinGuildAction(
       })),
   );
 
+  await broadcastGuildSync(guild.id, "member-joined");
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, ...guild.members.map((member) => member.user.id)],
+    "guild-membership-updated",
+  );
+
   await revalidateGuildRelatedRoutes([
     session.username,
     ...guild.members.map((member) => member.user.username),
@@ -1067,6 +1156,8 @@ export async function regenerateGuildInviteAction(formData: FormData) {
       inviteCode: await generateGuildInviteCode(),
     },
   });
+
+  await broadcastGuildSync(guildId, "invite-regenerated");
 
   await revalidateGuildRelatedRoutes([
     session.username,
@@ -1137,7 +1228,14 @@ export async function leaveGuildAction(formData: FormData) {
         href: "/guild",
       })),
     );
+
+    await broadcastGuildSync(membership.guild.id, "member-left");
   }
+
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, ...otherMembers.map((member) => member.userId)],
+    "guild-membership-updated",
+  );
 
   await revalidateGuildRelatedRoutes([
     session.username,
@@ -1199,6 +1297,12 @@ export async function removeGuildMemberAction(formData: FormData) {
     href: "/guild",
   });
 
+  await broadcastGuildSync(ownerMembership.guild.id, "member-removed");
+  await broadcastSocialAndProfileForUsers(
+    [session.userId, targetMembership.userId],
+    "guild-membership-updated",
+  );
+
   await revalidateGuildRelatedRoutes([
     session.username,
     targetMembership.user.username,
@@ -1246,7 +1350,7 @@ export async function saveGuildMessageAction(
     return { error: "Join a guild before posting to the board." };
   }
 
-  await db.guildMessage.create({
+  const createdMessage = await db.guildMessage.create({
     data: {
       guildId: membership.guildId,
       userId: session.userId,
@@ -1269,6 +1373,16 @@ export async function saveGuildMessageAction(
       })),
   );
 
+  await broadcastGuildMessage({
+    guildId: membership.guildId,
+    message: {
+      id: createdMessage.id,
+      username: session.username,
+      dateLabel: "Today",
+      content,
+    },
+  });
+
   revalidateRoutes(["/guild", "/notifications"]);
 
   return { success: "Guild post sent." };
@@ -1284,6 +1398,7 @@ export async function markGuildBoardSeenAction() {
     },
   });
   await markNotificationsReadForHref(session.userId, "/guild?tab=board");
+  await broadcastNotificationSync([session.userId], "guild-board-seen");
 
   revalidateRoutes(["/guild", "/notifications"]);
 }
@@ -1291,6 +1406,7 @@ export async function markGuildBoardSeenAction() {
 export async function rebuildProgressAction() {
   const session = await requireSession();
   await recalculateUserProgress(session.userId);
+  await broadcastSocialAndProfileForUsers([session.userId], "progress-rebuilt");
   revalidateRoutes(["/dashboard", "/today", "/history"]);
 }
 
@@ -1313,6 +1429,8 @@ export async function markNotificationReadAction(formData: FormData) {
     },
   });
 
+  await broadcastNotificationSync([session.userId], "notification-read-one");
+
   revalidateRoutes(["/notifications"]);
 }
 
@@ -1328,6 +1446,8 @@ export async function markAllNotificationsReadAction() {
       readAt: new Date(),
     },
   });
+
+  await broadcastNotificationSync([session.userId], "notification-read-all");
 
   revalidateRoutes(["/notifications"]);
 }

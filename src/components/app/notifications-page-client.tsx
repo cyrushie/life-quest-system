@@ -15,6 +15,7 @@ import {
 } from "@/lib/client/use-cached-json";
 import { broadcastAppSync, subscribeToAppSync } from "@/lib/client/app-sync";
 import { createSafeId } from "@/lib/id";
+import { usePrivateBroadcastChannel } from "@/lib/client/use-private-broadcast-channel";
 
 import {
   NotificationFeed,
@@ -25,7 +26,13 @@ import {
 
 const NOTIFICATIONS_API_URL = "/api/app/notifications";
 
-export function NotificationsPageClient({ refreshKey }: { refreshKey: string }) {
+export function NotificationsPageClient({
+  refreshKey,
+  userId,
+}: {
+  refreshKey: string;
+  userId: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [localRefreshKey, setLocalRefreshKey] = useState(refreshKey);
@@ -34,18 +41,37 @@ export function NotificationsPageClient({ refreshKey }: { refreshKey: string }) 
     localRefreshKey,
   );
 
-  useEffect(() => {
-    const refresh = () => {
-      invalidateCachedJson(NOTIFICATIONS_API_URL);
-      setLocalRefreshKey(createSafeId());
-    };
+  function refresh() {
+    invalidateCachedJson(NOTIFICATIONS_API_URL);
+    setLocalRefreshKey(createSafeId());
+  }
 
+  const {
+    connectionState: notificationConnectionState,
+    lastError: notificationConnectionError,
+  } = usePrivateBroadcastChannel({
+    topic: `notifications:${userId}`,
+    eventNames: ["notification-sync"],
+    onMessage: () => {
+      refresh();
+    },
+  });
+
+  useEffect(() => {
     const unsubscribe = subscribeToAppSync(() => {
       refresh();
     });
-    const intervalId = window.setInterval(() => {
-      refresh();
-    }, 12000);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (notificationConnectionState === "live") {
+      return;
+    }
+
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         refresh();
@@ -59,12 +85,24 @@ export function NotificationsPageClient({ refreshKey }: { refreshKey: string }) 
     window.addEventListener("focus", handleFocus);
 
     return () => {
-      unsubscribe();
-      window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleFocus);
     };
-  }, []);
+  }, [notificationConnectionState]);
+
+  useEffect(() => {
+    if (notificationConnectionState !== "fallback") {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      refresh();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [notificationConnectionState]);
 
   const safeData =
     data ?? {
@@ -121,7 +159,6 @@ export function NotificationsPageClient({ refreshKey }: { refreshKey: string }) 
     startTransition(async () => {
       await markAllNotificationsReadAction();
       broadcastAppSync("notifications-read-all");
-      router.refresh();
     });
   }
 
@@ -134,7 +171,6 @@ export function NotificationsPageClient({ refreshKey }: { refreshKey: string }) 
           await markGuildBoardSeenAction();
           broadcastAppSync("guild-board-opened");
           router.push(item.href);
-          router.refresh();
         });
         return;
       }
@@ -147,7 +183,6 @@ export function NotificationsPageClient({ refreshKey }: { refreshKey: string }) 
         await markNotificationReadAction(formData);
         broadcastAppSync("notification-opened");
         router.push(item.href);
-        router.refresh();
       });
       return;
     }
@@ -175,6 +210,10 @@ export function NotificationsPageClient({ refreshKey }: { refreshKey: string }) 
         mode="page"
         onMarkAllRead={handleMarkAllRead}
         onOpenItem={handleOpenItem}
+        realtimeStatus={{
+          state: notificationConnectionState,
+          lastError: notificationConnectionError,
+        }}
       />
     </section>
   );
